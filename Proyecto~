@@ -1,0 +1,13 @@
+#lang racket
+;Conectandose con el motor de mysql
+(require db)
+(define mysql (mysql-connect #:user "root"
+                             #:database "Fragmentacion"
+                             #:password "mysql"))
+
+;implementacion de las consultas he inserciones al motor mysql
+
+(define (buscar_infante x)( query mysql (string-append "select * from producto where id=" x)))
+
+
+
