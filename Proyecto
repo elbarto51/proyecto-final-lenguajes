@@ -1,16 +1,29 @@
 #lang racket
-;Conectandose con el motor de mysql
+;Conectar con motor mysql
 (require db)
 (define mysql (mysql-connect #:user "root"
-                             #:database "Fragmentacion"
+                             #:database "Vacunaciones"
                              #:password "mysql"))
 
 ;implementacion de las consultas he inserciones al motor mysql
 
-(define (buscar_infante x)( query mysql (string-append "select * from producto where id=" x)))
-(define (insertar_infante x y z )(query mysql (armar_insercion x y z)))
-(define (armar_insercion_infante x y z)(string-append "insert into infante values (" x "," y "," z ")"))
-(define armar_esquema_vacunacion ())
+(define (buscar_infante )(asignar_calendario (number->string(query-value mysql (string-append "select num_regcivil from infante where num_regcivil=1")))))
+(define (insertar_infante r n a g d f )(query mysql (armar_insercion_infante r n a g d f)))
+(define (armar_insercion_infante r n a g d f)(string-append "insert into infante values (" r " , " n " , " a " , " g " , " d "," f")"))
+;(insertar_infante "01" "'juana'" "'de arco'" " 'femenino'" "'popayan'" "'2018-06-01'")
+
+;Registrar un nuevo infante
+(define registrar x y )
+
+;Implementacion del calendario de vacunacion
+(define (asignar_calendario infante)(db_armar_calendario infante))
+(define (db_armar_calendario infante)(query mysql (string-append "call asignar_vacunas(" infante ")")))
+(buscar_infante )
+
+;pruebas
+(define(ejecutar_dml )(query-value mysql "select num_regcivil from infante where num_regcivil=1"))
+;(ejecutar_dml)
+
  
 
 
