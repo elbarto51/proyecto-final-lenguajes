@@ -1,28 +1,58 @@
 #lang racket
 ;Conectar con motor mysql
-(require db)
+
+(require db )
+
 (define mysql (mysql-connect #:user "root"
                              #:database "Vacunaciones"
                              #:password "mysql"))
 
 ;implementacion de las consultas he inserciones al motor mysql
 
-(define (buscar_infante )(asignar_calendario (number->string(query-value mysql (string-append "select num_regcivil from infante where num_regcivil=1")))))
+(define (buscar_infante infante )(query-rows mysql (string-append "select num_regcivil from infante where num_regcivil=" infante)))
 (define (insertar_infante r n a g d f )(query mysql (armar_insercion_infante r n a g d f)))
 (define (armar_insercion_infante r n a g d f)(string-append "insert into infante values (" r " , " n " , " a " , " g " , " d "," f")"))
 ;(insertar_infante "01" "'juana'" "'de arco'" " 'femenino'" "'popayan'" "'2018-06-01'")
 
 ;Registrar un nuevo infante
-(define registrar x y )
+(define (registrar registro nombre apellido genero direccion fecha_nac)( 
+         if(null?(cdr (buscar_infante registro)) )
+            "no esta"
+            "esta"
+            ))
 
 ;Implementacion del calendario de vacunacion
-(define (asignar_calendario infante)(db_armar_calendario infante))
-(define (db_armar_calendario infante)(query mysql (string-append "call asignar_vacunas(" infante ")")))
-(buscar_infante )
+(define (asignar_calendario infante fecha)(db_armar_calendario infante fecha))
+(define (db_armar_calendario infante fecha)
+  (query mysql (string-append "call asignar_vacunas(" infante ")")))
+;(registrar "3" "juan" "peres" "coas" "gshf" "dfjkdf")
+
+
+;---------------------------------------
+;--------------------------------------
+;------------------------------------
+;vacunas sin aplicar
+(define(sin_aplicar infante)
+  (query-rows mysql (string-append "select vac_id from calendario where aplicada=0 and num_regcivil=" (number->string infante))))
+;Ahora se gurda las vacunas que no han sido aplicada para el infante
+(define vacunas_sin_aplicar (sin_aplicar 1))
+; se crear una funcion recursiva para realizar la insercion
+(define (insertar_fechas lista infante fecha)
+  (if(null? lista)
+     "Termino"
+     (query mysql "insert (fecha_) into calendario values")
+   ))
+;obtener el retraso
+
+
+;Implementacion de aplicacion de una vacuan
+
+
 
 ;pruebas
-(define(ejecutar_dml )(query-value mysql "select num_regcivil from infante where num_regcivil=1"))
-;(ejecutar_dml)
+(define(ejecutar_dml )(query-maybe-value mysql "select num_regcivil from infante where num_regcivil=1"))
+
+
 
  
 
