@@ -1,0 +1,63 @@
+#lang racket
+; sabar si las dos listas son iguales
+;queda pendiente comprobar el tamaño
+(define (son_iguales lista1 lista2)
+  (if(null? lista1)
+     #t
+     (if(=(car lista1) (car lista2))
+        (son_iguales (cdr lista1) (cdr lista2))
+        #f
+        )
+     
+     ))
+;saber si dos fechas solo difieren en el dia
+(define (difieren_en_dias fecha1 fecha2)
+  (if(= (car(cdr fecha1)) (car (cdr fecha2)))
+     (if(= (car (cdr (cdr fecha1))) (car (cdr (cdr fecha2))))
+        #t
+        #f
+        )
+     #f
+     
+   ))  
+(difieren_en_dias '(2 2 3) '(3 2 4))
+;obtener el mes ingresado
+; queda modificar si es biciesto el año
+(define (dias_del_mes m)
+  (if(= m 1)
+     31
+     (if(= m 2)
+        28
+        (if(= m 3)
+           31
+           (if(= m 4)
+              30
+              (if(= m 5)
+                 31
+                 (if(= m 6)
+                    30
+                    (if(= m 7)
+                       31
+                       (if(= m 8)
+                          31
+                          (if(= m 9)
+                             30
+                             (if(= m 10)
+                                31
+                                (if(= m 11)
+                                   30
+                                   (if(= m 12)
+                                      31
+                                      #f
+                                      )))))))))))))
+
+;funcion aumentar el mes de una fecha
+;en caso de que el mes sea 12 se aumenta el año
+(define(aumentar_mes fecha)
+  (if(= (car (cdr fecha)) 12)
+     (append (list (car fecha)) (list 1) (list (+ (car (cdr (cdr fecha))) 1)))
+     (append (list (car fecha)) (list (+ (car (cdr fecha)) 1)) (cdr (cdr fecha)))  
+   ))
+;funcion para aumentar el año
+
+                  
