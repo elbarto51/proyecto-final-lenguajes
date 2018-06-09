@@ -1,13 +1,91 @@
 #lang racket
-;Conectandose con el motor de mysql
-(require db)
+;Conectar con motor mysql
+
+(require db )
+
 (define mysql (mysql-connect #:user "root"
-                             #:database "Fragmentacion"
+                             #:database "Vacunaciones"
                              #:password "mysql"))
 
 ;implementacion de las consultas he inserciones al motor mysql
 
-(define (buscar_infante x)( query mysql (string-append "select * from producto where id=" x)))
 
+(define (buscar_infante infante )(query-rows mysql (string-append "select num_regcivil from infante where num_regcivil=" infante)))
+(define (insertar_infante r n a g d f )(query mysql (armar_insercion_infante r n a g d f)))
+(define (armar_insercion_infante r n a g d f)(string-append "insert into infante values (" r " , " n " , " a " , " g " , " d "," f")"))
+;(insertar_infante "01" "'juana'" "'de arco'" " 'femenino'" "'popayan'" "'2018-06-01'")
+
+;Registrar un nuevo infante
+(define (registrar registro nombre apellido genero direccion fecha_nac)( 
+         if(null?(cdr (buscar_infante registro)) )
+            "no esta"
+            "esta"
+            ))
+
+;Implementacion del calendario de vacunacion
+;(define (asignar_calendario infante fecha)(db_armar_calendario infante fecha))
+(define (db_armar_calendario infante fecha)
+  (query mysql (string-append "call asignar_vacunas(" infante ")")))
+;(registrar "3" "juan" "peres" "coas" "gshf" "dfjkdf")
+
+
+;---------------------------------------
+;--------------------------------------
+;------------------------------------
+;vacunas sin aplicar
+(define(sin_aplicar infante)
+  (query-rows mysql (string-append "select vac_id from calendario where aplicada=0 and num_regcivil=" (number->string infante))))
+;Ahora se gurda las vacunas que no han sido aplicada para el infante
+(define vacunas_sin_aplicar (sin_aplicar 1))
+; se crear una funcion recursiva para realizar la insercion
+(define (insertar_fechas lista infante fecha)
+  (if(null? lista)
+     "Termino"
+     (query mysql "insert (fecha_) into calendario values")
+   ))
+;obtener vacunas
+(define(todas_las_vacunas)
+  (query-list mysql "Select vac_id from vacuna"
+   ))
+
+
+;Implementacion de aplicacion de una vacuan
+(define (buscar_edad vacuna)
+  (query-list mysql (string-append "select edad from vacuna where vac_id=" (number->string vacuna))))
+
+(define (meses_a_dias meses)
+  (* meses 30))
+
+;;;aqui la logica de asignacion de calendario de vacunacion para el menor
+(define (armar_insert infante vacuna fecha)
+  (string-append "insert into calendario values(" (number->string infante) "," (number->string vacuna) ",adddate(" fecha ","
+                 (number->string (meses_a_dias (car (buscar_edad vacuna)))) "),null,0)")) 
+;con la parte anteriar queda lista el dml para la insercion en la tabla
+
+
+(define (asignar_calendario infante vacunas fecha_inicio)
+  (if (null? vacunas)
+       "quepas"
+     (else ( "entre al else"
+     (query-exec mysql (armar_insert infante (car vacunas) fecha_inicio))    
+     (asignar_calendario infante (cdr vacunas) fecha_inicio)))))
+     
+
+          
+(asignar_calendario 1 (todas_las_vacunas) "'2018-12-01'") 
+
+
+   
+
+
+
+
+
+;pruebas
+(define(ejecutar_dml )(query-maybe-value mysql "select num_regcivil from infante where num_regcivil=1"))
+
+
+
+ 
 
 

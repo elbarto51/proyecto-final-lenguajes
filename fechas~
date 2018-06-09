@@ -10,7 +10,6 @@
         )
      
      ))
-;funcion para saber si un año es biciesto 
 ;saber si dos fechas solo difieren en el dia
 (define (difieren_en_dias fecha1 fecha2)
   (if(= (car(cdr fecha1)) (car (cdr fecha2)))
@@ -20,8 +19,8 @@
         )
      #f
      
-     ))  
-
+   ))  
+(difieren_en_dias '(2 2 3) '(3 2 4))
 ;obtener el mes ingresado
 ; queda modificar si es biciesto el año
 (define (dias_del_mes m)
@@ -58,17 +57,7 @@
   (if(= (car (cdr fecha)) 12)
      (append (list (car fecha)) (list 1) (list (+ (car (cdr (cdr fecha))) 1)))
      (append (list (car fecha)) (list (+ (car (cdr fecha)) 1)) (cdr (cdr fecha)))  
-     ))
-;funcion para calcular el numero de dias entre dos fechas
-(define(numero_dias fecha1 fecha2 suma)
-  (if (difieren_en_dias fecha1 fecha2)
-      (+ suma (- (car fecha2) (car fecha1)))
-      (numero_dias (aumentar_mes fecha1) fecha2 (+ (dias_del_mes (car (cdr fecha1))) suma))
-      )
-  )
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;------------------------;;;;;;;;;;;;;;;;;;;;
-;comverir meses a dias
-
+   ))
+;funcion para aumentar el año
 
                   

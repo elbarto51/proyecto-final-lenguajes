@@ -2,6 +2,7 @@
 ;Conectar con motor mysql
 
 (require db )
+(require racket/gui/base)
 
 (define mysql (mysql-connect #:user "root"
                              #:database "Vacunaciones"
@@ -9,20 +10,21 @@
 
 ;implementacion de las consultas he inserciones al motor mysql
 
+
 (define (buscar_infante infante )(query-rows mysql (string-append "select num_regcivil from infante where num_regcivil=" infante)))
 (define (insertar_infante r n a g d f )(query mysql (armar_insercion_infante r n a g d f)))
 (define (armar_insercion_infante r n a g d f)(string-append "insert into infante values (" r " , " n " , " a " , " g " , " d "," f")"))
 ;(insertar_infante "01" "'juana'" "'de arco'" " 'femenino'" "'popayan'" "'2018-06-01'")
 
 ;Registrar un nuevo infante
-(define (registrar registro nombre apellido genero direccion fecha_nac)( 
+(define (registrar_infante registro nombre apellido genero papa mama direccion fecha_nac numTelefono poblacion)( 
          if(null?(cdr (buscar_infante registro)) )
             "no esta"
             "esta"
             ))
 
 ;Implementacion del calendario de vacunacion
-(define (asignar_calendario infante fecha)(db_armar_calendario infante fecha))
+;(define (asignar_calendario infante fecha)(db_armar_calendario infante fecha))
 (define (db_armar_calendario infante fecha)
   (query mysql (string-append "call asignar_vacunas(" infante ")")))
 ;(registrar "3" "juan" "peres" "coas" "gshf" "dfjkdf")
@@ -42,15 +44,184 @@
      "Termino"
      (query mysql "insert (fecha_) into calendario values")
    ))
-;obtener el retraso
+;obtener vacunas
+(define(todas_las_vacunas)
+  (query-list mysql "Select vac_id from vacuna"
+   ))
 
 
 ;Implementacion de aplicacion de una vacuan
+(define (buscar_edad vacuna)
+  (query-list mysql (string-append "select edad from vacuna where vac_id=" (number->string vacuna))))
+
+(define (meses_a_dias meses)
+  (* meses 30))
+
+;;;aqui la logica de asignacion de calendario de vacunacion para el menor
+(define (armar_insert infante vacuna fecha)
+  (string-append "insert into calendario values(" (number->string infante) "," (number->string vacuna) ",adddate(" fecha ","
+                 (number->string (meses_a_dias (car (buscar_edad vacuna)))) "),null,0)")) 
+;con la parte anteriar queda lista el dml para la insercion en la tabla
+
+
+(define (asignar_calendario trash infante vacunas fecha_inicio)
+  (if (null? vacunas)
+      "calendario creado"
+      (asignar_calendario (query-exec mysql (armar_insert infante (car vacunas) fecha_inicio)) infante (cdr vacunas) fecha_inicio)))    
+     
+(define (vacunar_infante infante vacuna fecha)
+  (query mysql (string-append "update calendario set fecha_vacunacion="fecha",aplicada=true where num_regcivil="
+                              (number->string infante) " and vac_id=" (number->string vacuna))))
+       
+
+          
+;(asignar_calendario 0 1 (todas_las_vacunas) "'2018-1-01'")
+;(meses_a_dias 0)
+
+
+;------parte de oscar-------------------------
+;______________________________________________
+;_____________________________________________
+;_____________________________________________
+;Ventana principal
+(define principalVentana (new frame% [label "Control Vacunacion"]))
+(define panel1 (new horizontal-panel% [parent principalVentana]
+                                     [alignment '(center center)]))
+
+
+(new button% [parent panel1] [label "Registrar Infante"] [callback (lambda (button event)
+                           (send RegMenor show #t))])
+
+(new button% [parent panel1] [label "Consultar datos menor"][callback (lambda (button event)
+                          (send ventanaInfoMenor show #t))])
+(new button% [parent panel1] [label "Nuevo registro vacuna"][callback (lambda (button event)
+                           (send panel1 show #t))])
+
+
+;Ventana registro de un menor
+(define RegMenor (new frame% [label "REGISTRO DE NUEVO INFANTE"]))
+(define numReg(new text-field% [parent RegMenor] [label "Numero registro civil"]))
+(define nombre(new text-field% [parent RegMenor] [label "Nombres"]))
+(define apellido(new text-field% [parent RegMenor] [label "Apellidos"]))
+(define fechaNac(new text-field% [parent RegMenor] [label "Fecha de nacimiento"]))
+(define nombreMa(new text-field% [parent RegMenor] [label "Nombre de la madre"]))
+(define nombrePa(new text-field% [parent RegMenor] [label "Nombre del padre"]))
+(define telefono(new text-field% [parent RegMenor] [label "Telefono de contacto"]))
+(define direccion(new text-field% [parent RegMenor] [label "Direccion"]))
+(define poblacion (new combo-field% [parent RegMenor] [label "Poblacion pertenece"]
+                       [choices '("Indigena" "Rural")]))
+(define genero (new combo-field%
+                         (label "Género                  ")
+                         (parent RegMenor)
+                         (choices '("Masculino" "Femenino"))
+                         (init-value "Masculino")))
+(define estatura(new text-field% [parent RegMenor] [label "Estatura al nacer[cm]"]))
+(define panel (new horizontal-panel% [parent RegMenor]
+                                     [alignment '(center center)]))
+
+(new button% [parent panel] [label "Cancelar"])
+(new button% [parent panel] [label "Registrar"][callback (lambda (button event)
+                           (registrar_infante (send numReg get-value) (send nombre get-value)
+                                              (send apellido get-value) (send fechaNac get-value)
+                                              (send nombrePa get-value) (send nombreMa get-value)
+                                              (send telefono get-value) (send direccion get-value)
+                                              (send poblacion get-value) "vacio")
+                                              )])
+(send RegMenor show #f)
 
 
 
-;pruebas
-(define(ejecutar_dml )(query-maybe-value mysql "select num_regcivil from infante where num_regcivil=1"))
+;========================================================================
+;Ventana mostrar informacion de menor
+(define ventanaInfoMenor (new dialog%
+                              [label "Calendario Vacunacion"]
+                              ))
+#|(define numR (new combo-field% [parent ventanaInfoMenor]
+                  [label "Numero Registro Civil"]
+                  [choices '("1" "2" "3") ]
+                  [vert-margin 10]
+                  [horiz-margin 50]
+                  [min-width 150]
+                  ))
+|#
+(define numR(new text-field% [parent ventanaInfoMenor]
+                 [label "Numero registro civil"]))
+(define informacion " N Registro civil\t    Nombres\t    Apellidos\t     Acudiente\t      Direccion\t        Genero\t          poblacion \n")
+(define txtInfoMenor (new text-field%
+                       [label ""]
+                       [init-value informacion]
+                       [vert-margin 50]
+                       [min-height 250]
+                       [min-width 800]
+                       [parent ventanaInfoMenor]
+                       [style (list 'multiple)]
+                       [callback (lambda (button event)
+                                   (send ventanaInfoMenor show #t))]
+                       ))
+
+(define regis "")
+(define primerNombreM "")
+(define segundoNombreM "")
+(define primerApellidoM "")
+(define segundoApellidoM "")
+(define nombreAcudienteM "")
+(define direccionM "")
+(define generoM "")
+(define poblacionM "")
+(define btn-mostrar-informacion (new button% [parent ventanaInfoMenor]
+                                     [label "cargar datos"]
+                                     [callback (lambda (button event)
+                                                 (set! regis (send numR get-value))
+                                                 (set! primerNombreM (vector->values (car(query-rows mysql (string-append "SELECT `primerNombre` FROM `menor` WHERE registroCivil =1")))))
+                                                 (set! segundoNombreM (vector->values (car(query-rows mysql (string-append "SELECT `segundoNombre` FROM `menor` WHERE registroCivil =1")))))
+                                                 (set! primerApellidoM (vector->values (car(query-rows mysql (string-append "SELECT `primerApellido` FROM `menor` WHERE registroCivil =1")))))
+                                                 (set! segundoApellidoM (vector->values (car(query-rows mysql (string-append "SELECT `segundoApellido` FROM `menor` WHERE registroCivil =1")))))
+                                                 (set! direccionM (vector->values (car(query-rows mysql (string-append"SELECT direccion FROM `menor` WHERE registroCivil = 1 ")))))
+                                                 (set! nombreAcudienteM (vector->values (car(query-rows mysql (string-append"SELECT nombreAcudiente FROM `menor` WHERE registroCivil = 1 ")))))
+                                                 (set! generoM (vector->values (car(query-rows mysql (string-append"SELECT genero FROM `menor` WHERE registroCivil = 1 ")))))
+                                                 (set! poblacionM (vector->values (car(query-rows mysql (string-append"SELECT poblacion FROM `menor` WHERE registroCivil = 1 ")))))
+                                                 (set! informacion (string-append "N Registro civil\t    Nombres\t    Apellidos\t     Acudiente\t      Direccion\t        Genero\t          poblacion \n\n        "regis"\t\t"primerNombreM""segundoNombreM"\t\t"primerApellidoM""segundoApellidoM"\t\t"nombreAcudienteM"\t\t"direccionM"                         "generoM"                      "poblacionM""))
+                                                
+                                                 (send txtInfoMenor set-value informacion))]))
+                                                 
+
+
+
+
+
+
+
+
+
+;(query-rows conexion "select * from menor")
+(define (cargar valor)
+(query mysql "select * from infante where num_regcivil = ?" valor))
+
+#|
+;llenar caja act
+  (define (llenar a b)
+  (send direccion set-value (parsear b))
+  )
+|#
+
+;Logica registrar Menor 
+(define (parsear dato)
+  (if(string? dato)
+     dato
+     (number->string dato)) 
+)
+
+
+(send ventanaInfoMenor show #f)
+(send principalVentana show #t)
+
+
+   
+
+
+
+
+
 
 
 
