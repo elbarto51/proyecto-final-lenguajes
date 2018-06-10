@@ -8,31 +8,35 @@
                              #:database "Vacunaciones"
                              #:password "mysql"))
 
-;implementacion de las consultas he inserciones al motor mysql
+
+;.....................................................................
+;Registrar un nuevo infante
+(define (registrar_infante registro nombre apellido genero papa mama direccion
+                           fecha_nacimiento fecha_registro numTelefono poblacion )
+  (if(not (null? (buscar_infante registro)))
+     "El infante ya se encuentra registrado y tiene un calendario"
+     (begin  
+       (query mysql (armar_insercion_infante registro nombre apellido genero direccion fecha_nacimiento
+       (asignar_calendario 0 registro (todas_las_vacunas) fecha_nacimiento) 
+     )))
 
 
 (define (buscar_infante infante )(query-list mysql (string-append "select num_regcivil from infante where num_regcivil="
                                                                   (number->string infante))))
-(define (armar_insercion_infante r n a g d f1 f2)(string-append "insert into infante values ("(number->string r) " , " n " , " a " , " g " , " d "," f1 ","f2")"))
-;(insertar_infante "01" "'juana'" "'de arco'" " 'femenino'" "'popayan'" "'2018-06-01'")
+(define (armar_insercion_infante r n a g d f1 f2 pa ma tel pobl)
+  (string-append "insert into infante values ("(number->string r)","n","a"," g","d","f1","f2","pa","ma","tel","pobl")"))
 
-;Registrar un nuevo infante
-(define (registrar_infante registro nombre apellido genero papa mama direccion fecha_nacimiento fecha_registro numTelefono poblacion )
-  (if(not (null? (buscar_infante registro)))
-     "El infante ya existe"
-     (begin  
-     (query mysql (armar_insercion_infante registro nombre apellido genero direccion fecha_nacimiento fecha_registro))
-     (asignar_calendario 0 registro (todas_las_vacunas) fecha_nacimiento) 
-     )))
+;......................................................................................................
+;...........................................................................
+;.................................................
 
 
 
-
+;...............................................
 ;Implementacion del calendario de vacunacion
-;(define (asignar_calendario infante fecha)(db_armar_calendario infante fecha))
-(define (db_armar_calendario infante fecha)
-  (query mysql (string-append "call asignar_vacunas(" infante ")")))
-;(registrar "3" "juan" "peres" "coas" "gshf" "dfjkdf")
+;el calendario es implementado inmediatamante despues del registro del infante
+
+;Obtenemos todas las vacunas que estan en el plan de vacunacion del estado para un infante de no mayor a 5 años
 
 
 ;---------------------------------------
@@ -41,6 +45,7 @@
 ;vacunas sin aplicar
 (define(sin_aplicar infante)
   (query-rows mysql (string-append "select vac_id from calendario where aplicada=0 and num_regcivil=" (number->string infante))))
+
 ;Ahora se gurda las vacunas que no han sido aplicada para el infante
 (define vacunas_sin_aplicar (sin_aplicar 1))
 ; se crear una funcion recursiva para realizar la insercion
@@ -78,9 +83,75 @@
   (query mysql (string-append "update calendario set fecha_vacunacion="fecha",aplicada=true where num_regcivil="
                               (number->string infante) " and vac_id=" (number->string vacuna))))
 
-          
-;(asignar_calendario 0 1 (todas_las_vacunas) "'2018-1-01'")
-;(meses_a_dias 0)
+ ;en caso de que un menor sea registrado tarde saber como afecta esto a lo demas
+; sabar si las dos listas son iguales
+;queda pendiente comprobar el tamaño
+(define (son_iguales lista1 lista2)
+  (if(null? lista1)
+     #t
+     (if(=(car lista1) (car lista2))
+        (son_iguales (cdr lista1) (cdr lista2))
+        #f
+        )
+     
+     ))
+;funcion para saber si un año es biciesto 
+;saber si dos fechas solo difieren en el dia
+(define (difieren_en_dias fecha1 fecha2)
+  (if(= (car(cdr fecha1)) (car (cdr fecha2)))
+     (if(= (car (cdr (cdr fecha1))) (car (cdr (cdr fecha2))))
+        #t
+        #f
+        )
+     #f
+     
+     ))  
+
+;obtener el mes ingresado
+; queda modificar si es biciesto el año
+(define (dias_del_mes m)
+  (if(= m 1)
+     31
+     (if(= m 2)
+        28
+        (if(= m 3)
+           31
+           (if(= m 4)
+              30
+              (if(= m 5)
+                 31
+                 (if(= m 6)
+                    30
+                    (if(= m 7)
+                       31
+                       (if(= m 8)
+                          31
+                          (if(= m 9)
+                             30
+                             (if(= m 10)
+                                31
+                                (if(= m 11)
+                                   30
+                                   (if(= m 12)
+                                      31
+                                      #f
+                                      )))))))))))))
+
+;funcion aumentar el mes de una fecha
+;en caso de que el mes sea 12 se aumenta el año
+(define(aumentar_mes fecha)
+  (if(= (car (cdr fecha)) 12)
+     (append (list (car fecha)) (list 1) (list (+ (car (cdr (cdr fecha))) 1)))
+     (append (list (car fecha)) (list (+ (car (cdr fecha)) 1)) (cdr (cdr fecha)))  
+     ))
+;funcion para calcular el numero de dias entre dos fechas
+(define(numero_dias fecha1 fecha2 suma)
+  (if (difieren_en_dias fecha1 fecha2)
+      (+ suma (- (car fecha2) (car fecha1)))
+      (numero_dias (aumentar_mes fecha1) fecha2 (+ (dias_del_mes (car (cdr fecha1))) suma))
+      )
+  )
+
 
 
 ;------parte de oscar-------------------------
@@ -115,7 +186,7 @@
 (define direccion(new text-field% [parent RegMenor] [label "Direccion"]))
 (define poblacion(new combo-field% [label "Poblacion pertenece"]
                        [choices '("Indigena" "Rural")] [parent RegMenor] [init-value "Rural"] ))
-;;;--para el manejo de los resultados 
+
 
 (define genero (new combo-field%
                          (label "Género                  ")
@@ -128,12 +199,17 @@
 
 (new button% [parent panel] [label "Cancelar"][callback (lambda (button event) (send panel1 show #f))])
 (new button% [parent panel] [label "Registrar"][callback (lambda (button event)
-                           (registrar_infante (send numReg get-value) (send nombre get-value)
-                                              (send apellido get-value) (send genero get-value)
-                                              (send nombrePa get-value) (send nombreMa get-value)
-                                              (send direccion get-value) (send fechaNac get-value)
-                                              "otra" "vacio")
+                           ( preparar_llamado_insert)
                                               )])
+(define (preparar_llamado_insert)
+  (registrar_infante
+  (string->number(send numReg get-value)) (string-append "'" (send nombre get-value) "'")
+  (string-append "'" (send apellido get-value) "'") (string-append "'"(send genero get-value) "'")
+  (string-append "'" (send nombrePa get-value) "'") (string-append "'" (send nombreMa get-value) "'")
+  (string-append "'" (send direccion get-value) "'") (string-append "'" (send fechaNac get-value) "'")
+  (string-append "'" (send fechaRegistro get-value) "'") (send telefono get-value)
+  (string-append "'" (send poblacion get-value) "'")))
+
 (send RegMenor show #f)
 
 
@@ -143,14 +219,8 @@
 (define ventanaInfoMenor (new dialog%
                               [label "Calendario Vacunacion"]
                               ))
-#|(define numR (new combo-field% [parent ventanaInfoMenor]
-                  [label "Numero Registro Civil"]
-                  [choices '("1" "2" "3") ]
-                  [vert-margin 10]
-                  [horiz-margin 50]
-                  [min-width 150]
-                  ))
-|#
+
+
 (define numR(new text-field% [parent ventanaInfoMenor]
                  [label "Numero registro civil"]))
 (define informacion " N Registro civil\t    Nombres\t    Apellidos\t     Acudiente\t      Direccion\t        Genero\t          poblacion \n")
@@ -196,46 +266,10 @@
 
 
 
-
-
-
-
-;(query-rows conexion "select * from menor")
-(define (cargar valor)
-(query mysql "select * from infante where num_regcivil = ?" valor))
-
-#|
-;llenar caja act
-  (define (llenar a b)
-  (send direccion set-value (parsear b))
-  )
-|#
-
-;Logica registrar Menor 
-(define (parsear dato)
-  (if(string? dato)
-     dato
-     (number->string dato)) 
-)
-
-
 (send ventanaInfoMenor show #f)
 (send principalVentana show #t)
 
 
-   
-;
-;(define list-box (new list-box%
-;                  [label ""]
-        ;          [choices '() ]
-       ;           [columns '("Id" "Fecha" "Diagnostico")]
-      ;            [parent RegMenor]
-     ;             [style (list 
-    ;                      'variable-columns
-   ;                       'single
-  ;                        'column-headers
- ;                         'clickable-headers
-;'vertical-label)]))
 
 
 
