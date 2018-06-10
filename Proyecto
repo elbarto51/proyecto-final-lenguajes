@@ -11,17 +11,22 @@
 ;implementacion de las consultas he inserciones al motor mysql
 
 
-(define (buscar_infante infante )(query-rows mysql (string-append "select num_regcivil from infante where num_regcivil=" infante)))
-(define (insertar_infante r n a g d f )(query mysql (armar_insercion_infante r n a g d f)))
-(define (armar_insercion_infante r n a g d f)(string-append "insert into infante values (" r " , " n " , " a " , " g " , " d "," f")"))
+(define (buscar_infante infante )(query-list mysql (string-append "select num_regcivil from infante where num_regcivil="
+                                                                  (number->string infante))))
+(define (armar_insercion_infante r n a g d f1 f2)(string-append "insert into infante values ("(number->string r) " , " n " , " a " , " g " , " d "," f1 ","f2")"))
 ;(insertar_infante "01" "'juana'" "'de arco'" " 'femenino'" "'popayan'" "'2018-06-01'")
 
 ;Registrar un nuevo infante
-(define (registrar_infante registro nombre apellido genero papa mama direccion fecha_nac numTelefono poblacion)( 
-         if(null?(cdr (buscar_infante registro)) )
-            "no esta"
-            "esta"
-            ))
+(define (registrar_infante registro nombre apellido genero papa mama direccion fecha_nacimiento fecha_registro numTelefono poblacion )
+  (if(not (null? (buscar_infante registro)))
+     "El infante ya existe"
+     (begin  
+     (query mysql (armar_insercion_infante registro nombre apellido genero direccion fecha_nacimiento fecha_registro))
+     (asignar_calendario 0 registro (todas_las_vacunas) fecha_nacimiento) 
+     )))
+
+
+
 
 ;Implementacion del calendario de vacunacion
 ;(define (asignar_calendario infante fecha)(db_armar_calendario infante fecha))
@@ -72,7 +77,6 @@
 (define (vacunar_infante infante vacuna fecha)
   (query mysql (string-append "update calendario set fecha_vacunacion="fecha",aplicada=true where num_regcivil="
                               (number->string infante) " and vac_id=" (number->string vacuna))))
-       
 
           
 ;(asignar_calendario 0 1 (todas_las_vacunas) "'2018-1-01'")
@@ -103,29 +107,32 @@
 (define numReg(new text-field% [parent RegMenor] [label "Numero registro civil"]))
 (define nombre(new text-field% [parent RegMenor] [label "Nombres"]))
 (define apellido(new text-field% [parent RegMenor] [label "Apellidos"]))
-(define fechaNac(new text-field% [parent RegMenor] [label "Fecha de nacimiento"]))
+(define fechaNac(new text-field% [parent RegMenor] [label "Fecha Nacimiento(YYYY-MM-DD)"]))
+(define fechaRegistro(new text-field% [parent RegMenor] [label "Fecha Registro(YYYY-MM-DD)"]))
 (define nombreMa(new text-field% [parent RegMenor] [label "Nombre de la madre"]))
 (define nombrePa(new text-field% [parent RegMenor] [label "Nombre del padre"]))
 (define telefono(new text-field% [parent RegMenor] [label "Telefono de contacto"]))
 (define direccion(new text-field% [parent RegMenor] [label "Direccion"]))
-(define poblacion (new combo-field% [parent RegMenor] [label "Poblacion pertenece"]
-                       [choices '("Indigena" "Rural")]))
+(define poblacion(new combo-field% [label "Poblacion pertenece"]
+                       [choices '("Indigena" "Rural")] [parent RegMenor] [init-value "Rural"] ))
+;;;--para el manejo de los resultados 
+
 (define genero (new combo-field%
                          (label "Género                  ")
                          (parent RegMenor)
                          (choices '("Masculino" "Femenino"))
                          (init-value "Masculino")))
-(define estatura(new text-field% [parent RegMenor] [label "Estatura al nacer[cm]"]))
+
 (define panel (new horizontal-panel% [parent RegMenor]
                                      [alignment '(center center)]))
 
-(new button% [parent panel] [label "Cancelar"])
+(new button% [parent panel] [label "Cancelar"][callback (lambda (button event) (send panel1 show #f))])
 (new button% [parent panel] [label "Registrar"][callback (lambda (button event)
                            (registrar_infante (send numReg get-value) (send nombre get-value)
-                                              (send apellido get-value) (send fechaNac get-value)
+                                              (send apellido get-value) (send genero get-value)
                                               (send nombrePa get-value) (send nombreMa get-value)
-                                              (send telefono get-value) (send direccion get-value)
-                                              (send poblacion get-value) "vacio")
+                                              (send direccion get-value) (send fechaNac get-value)
+                                              "otra" "vacio")
                                               )])
 (send RegMenor show #f)
 
@@ -217,8 +224,18 @@
 
 
    
-
-
+;
+;(define list-box (new list-box%
+;                  [label ""]
+        ;          [choices '() ]
+       ;           [columns '("Id" "Fecha" "Diagnostico")]
+      ;            [parent RegMenor]
+     ;             [style (list 
+    ;                      'variable-columns
+   ;                       'single
+  ;                        'column-headers
+ ;                         'clickable-headers
+;'vertical-label)]))
 
 
 
