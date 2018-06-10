@@ -18,7 +18,7 @@
      (begin  
        (query mysql (armar_insercion_infante registro nombre apellido genero direccion fecha_nacimiento
        (asignar_calendario 0 registro (todas_las_vacunas) fecha_nacimiento) 
-     )))
+     )))))
 
 
 (define (buscar_infante infante )(query-list mysql (string-append "select num_regcivil from infante where num_regcivil="
