@@ -152,6 +152,14 @@
       )
   )
 
+;......................................................
+;implementacion de aplicacion de una vacuan
+(define (buscar_vacunas_pendientes infante fecha)
+  (query-rows mysql (string-append "select ca.vac_id, nombre, fecha_programada from vacuna vac inner join calendario ca"
+                              " on ca.vac_id=vac.vac_id where ca.num_regcivil=" infante
+                              " and aplicada=0 and fecha_programada<=" fecha )))
+(buscar_vacunas_pendientes "1" "'1994-04-10'") 
+
 
 
 ;------parte de oscar-------------------------
@@ -266,8 +274,8 @@
 
 
 
-(send ventanaInfoMenor show #f)
-(send principalVentana show #t)
+;(send ventanaInfoMenor show #f)
+;(send principalVentana show #t)
 
 
 
