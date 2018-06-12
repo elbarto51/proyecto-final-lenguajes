@@ -191,28 +191,33 @@
   ))
 
 
-;......................................................
 ;implementacion de aplicacion de una vacuana
-(define fecha_programada "")  
+;=========================================================================================
+(define fecha_programada "")   
 
-(define (vacunar_infante infante fecha_programada fecha_vacunacion)
+(define (vacunar_infante infante fecha_programada fecha_vacunacion) 
+  (if (mayor_que (comvertir_fecha fecha_programada) (comvertir_fecha fecha_vacunacion) )
+             (set! fecha_vacunacion fecha_programada) 
+             ""
+             )  
   (begin
-  (query-exec mysql (string-append "update calendario set fecha_vacunacion='"fecha_vacunacion"',aplicada=true where num_regcivil="
-                              infante " and fecha_programada='"fecha_programada "'"))
-  (query-exec mysql (string-append "update calendario set fecha_programada=adddate(fecha_programada,"
-                            (number->string (diferencia_entre_fechas (comvertir_fecha fecha_programada) (comvertir_fecha fecha_vacunacion) ))
-                            "),alerta=true where fecha_programada>'"fecha_programada"' and fecha_programada<'" 
-                            fecha_vacunacion"' and num_regcivil="infante 
-                            ))
-  (send txt_calendario set-value "Infante Vacunado-El calendario a sido modificado")
-  ))
+        (query-exec mysql (string-append "update calendario set fecha_vacunacion='"fecha_vacunacion"',aplicada=true where num_regcivil="
+                               infante " and fecha_programada='"fecha_programada "'"))
+       (query-exec mysql (string-append "update calendario set fecha_programada=adddate(fecha_programada,"
+                               (number->string (diferencia_entre_fechas (comvertir_fecha fecha_programada) (comvertir_fecha fecha_vacunacion) ))
+                                             "),alerta=true where fecha_programada>'"fecha_programada"' and fecha_programada<'" 
+                                                        fecha_vacunacion"' and num_regcivil="infante)) 
+       (send txt_calendario set-value "Infante Vacunado-El calendario a sido modificado")
+                   )
+             )
+  
 
 (define (prioridad_vacuna infante fecha)
    (if(null? (query-list mysql (string-append "select cast(fecha_programada as char) from calendario where num_regcivil=" infante
                                        " and fecha_programada<'"fecha "' and aplicada=false limit 1")))
       (begin
             (set! fecha_programada (query-value mysql (string-append "select cast(fecha_programada as char) from calendario where num_regcivil=" infante
-                                       " and aplicada=false limit 1"))) 
+                                       " and aplicada=false limit 1")))  
              (query-value mysql (string-append "select cast(fecha_programada as char) from calendario where num_regcivil=" infante
                                         " and aplicada=false limit 1")))
       (begin
@@ -251,11 +256,9 @@
                                    " and num_regcivil="infante " and aplicada=true")))
 
 
-;------parte de oscar-------------------------
-;______________________________________________n
-;_____________________________________________
-;_____________________________________________
-;Ventana principal
+
+;Ventana principal de la aplicacion
+;======================================================================================
 (define principalVentana (new frame% [label "Control Vacunacion"]
                         [min-height 250]
                        [min-width 800]))
@@ -272,6 +275,7 @@
                            (send ventana_vacunacion show #t))])
 
 ;Ventana de la vacunacion de un menor
+;===============================================================================
 (define encabezado1 "Id Vacuna\t\tNombre\t\tFecha De Apliaccion")
 (define encabezado2 "Id Vacuna\t\tNombre\t\tFecha Programada\n")
 (define cuello "")
@@ -348,6 +352,7 @@
    
  
 ;Ventana registro de un menor
+;====================================================================================================
 (define RegMenor (new frame% [label "REGISTRO DE NUEVO INFANTE"] [min-height 500] [min-width 700]))
 (define numReg(new text-field% [parent RegMenor] [label "Numero registro civil"]))
 (define nombre(new text-field% [parent RegMenor] [label "Nombres"]))
@@ -394,19 +399,21 @@
 (define vacio "Infante No Registrado")
 
 (define(traer_calendario infante)
-  (query-rows mysql (string-append "select edad,nombre,dosis,cast(fecha_programada as char) from calendario ca inner join vacuna va on va.vac_id=ca.vac_id where num_regcivil=" infante )))
+  (query-rows mysql (string-append "select edad,nombre,dosis,cast(fecha_programada as char),aplicada from calendario ca inner join vacuna va on va.vac_id=ca.vac_id where num_regcivil=" infante )))
 
-
+ 
 (define (pegar_a_info cabeza cola x )
   (if(null? cola)
          x
       (begin
        (set! lista_temporal (vector->list cabeza))
        (pegar_a_info (car cola) (cdr cola) 
-       (string-append x "\nEdad: " (number->string (car lista_temporal)) "Meses\n\t\t"
+       (string-append x "\nEdad : " (number->string (car lista_temporal)) " Meses\n\t\t"
                       "Nombre Vacuna: " (car (cdr lista_temporal )) "\n\t\t Dosis: "
                       (number->string (car (cdr (cdr lista_temporal)))) "\n\t\t Fecha Programada: "
-                      (car (cdr (cdr (cdr lista_temporal )))) "\n\n" )
+                      (car (cdr (cdr (cdr lista_temporal )))) "\n\t\tEstado Vacuna\n\t\t(1 Aplicada 0 Sin aplicar):  "
+                      (number->string (car (cdr (cdr (cdr (cdr lista_temporal))))))
+                      )
        
        )
      )))
@@ -462,15 +469,14 @@
        (set! primerNombreM (vector->values (car(query-rows mysql
        (string-append "SELECT nombre from infante where num_regcivil=" numR))))) 
        (set! primerApellidoM (vector->values (car(query-rows mysql (string-append "SELECT apellido from infante where num_regcivil=" numR )))))
-       (set! telefonoM (number->string (vector->values (car(query-rows mysql (string-append "SELECT telefono from infante where num_regcivil="numR ))))))
        (set! direccionM (vector->values (car(query-rows mysql (string-append "SELECT direccion from infante where num_regcivil="numR )))))
        (set! nombreMama (vector->values (car(query-rows mysql (string-append "SELECT madre from infante where num_regcivil="numR )))))
-       (set! genero (vector->values (car(query-rows mysql (string-append "SELECT genero from infante where num_regcivil=" numR )))))
+       (set! generoM (vector->values (car(query-rows mysql (string-append "SELECT genero from infante where num_regcivil=" numR )))))
        (set! poblacionM (vector->values (car(query-rows mysql (string-append "SELECT poblacion from infante where num_regcivil="numR )))))
-       (set! informacion (string-append "N Registro civil\t    Nombres\t    Apellidos\t     Acudiente\t      Direccion\t        Genero\t          poblacion \n\n"
-                    numR "\t\t" primerNombreM "\t\t    "primerApellidoM"\t\t    "nombreMama"\t\t   "direccionM"      "generoM"      "telefonoM"        "poblacionM"\n\n"
-       
-     (pegar_a_info (car (traer_calendario numR)) (cdr (traer_calendario numR)) "")))
+       (set! informacion (string-append "N Registro civil\t    Nombres\t    Apellidos\t     Acudiente\t      Direccion\t        Genero\t               poblacion \n\n"
+                    numR "\t\t   " primerNombreM "\t\t    "primerApellidoM"\t\t    "nombreMama"\t\t        "direccionM"\t       "generoM"\t\t"poblacionM"\n\n"
+          
+     (pegar_a_info (car (traer_calendario numR)) (cdr (traer_calendario numR)) "")))  
    )))
                                                  
 
