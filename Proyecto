@@ -176,7 +176,7 @@
 ;implementacion de aplicacion de una vacuan
 (define (prioridad_vacuna infante fecha)
    (query-value mysql (string-append "select cast(fecha_programada as char) from calendario where num_regcivil=" infante
-                                       " and fecha_programada<"fecha " and aplicada=false limit 1")))  
+                                       " and fecha_programada<'"fecha "' and aplicada=false limit 1")))  
 (define (buscar_vacunas_pendientes infante fecha)
   (query-rows mysql (string-append "select ca.vac_id, nombre, cast(fecha_programada as char) from vacuna vac inner join calendario ca"
                               " on ca.vac_id=vac.vac_id where ca.num_regcivil=" infante
@@ -186,14 +186,14 @@
   (if (null? cola)
       (begin
        (set! lista_temporal (vector->list cabeza))
-      (string-append cadena (number->string (car lista_temporal)) "\t\t->"
-                                                            (car (cdr lista_temporal)) " \t\t-> "
+      (string-append "\n" cadena (number->string (car lista_temporal)) "\t\t"
+                                                            (car (cdr lista_temporal)) " \t\t"
                                                             (car (cdr (cdr lista_temporal)))
                                                             ))
       
       (begin
        (set! lista_temporal (vector->list cabeza))
-      (mostrar_vacunas (car cola) (cdr cola) (string-append cadena (number->string (car lista_temporal)) " \t "
+      (mostrar_vacunas (car cola) (cdr cola) (string-append "\n" cadena (number->string (car lista_temporal)) " \t\t "
                                                             (car (cdr lista_temporal)) " \t\t "
                                                             (car (cdr (cdr lista_temporal)))
                                                             ))
@@ -229,7 +229,7 @@
 (define fecha_vacuna(new text-field% [parent ventana_vacunacion] [label "Fecha Vacunacion"]))
 
 (define txt_calendario (new text-field%
-                       [label ""]
+                       [label " "]
                        [init-value info_calen]
                        [vert-margin 50]
                        [min-height 150]
@@ -247,7 +247,9 @@
                          [label "Buscar"]
                          [callback (lambda (button event) (mostrar_calendario))]))
 (define (mostrar_calendario)
-  (set! txt_calendario (mostrar_vacunas (car (buscar_vacunas_pendientes (send reg_infante get-values)))))
+  (send txt_calendario set-value (mostrar_vacunas (car (buscar_vacunas_pendientes (send reg_infante get-value) (send fecha_vacuna get-value)))
+                                        (cdr (buscar_vacunas_pendientes (send reg_infante get-value) (send fecha_vacuna get-value))) ""
+                                        ))
    )
 
 
@@ -382,6 +384,7 @@
 (send ventanaInfoMenor show #f)
 
 (send principalVentana show #t)
+
 
 
 
