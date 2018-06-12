@@ -14,13 +14,13 @@
 (define (registrar_infante registro nombre apellido genero papa mama direccion
                            fecha_nacimiento fecha_registro numTelefono poblacion )
   (if(not (null? (buscar_infante registro)))
-     "El infante ya se encuentra registrado y tiene un calendario"
+     (send resultado set-value "El infante ya se encuentra registrado y tiene un calendario")
      (begin
-       
-           (query mysql (armar_insercion_infante registro nombre apellido genero direccion fecha_nacimiento fecha_registro papa mama numTelefono poblacion ))
-           (if (> 365 (dias_entre_fechas fecha_nacimiento fecha_registro) )
+       (query mysql (armar_insercion_infante registro nombre apellido genero direccion fecha_nacimiento fecha_registro papa mama numTelefono poblacion ))
+       (send resultado set-value "Infante Registrado")
+           (if (> (dias_entre_fechas fecha_nacimiento fecha_registro) 365)
                (asignar_calendario 0 registro (todas_las_vacunas 1) (string-append "'"fecha_registro "'"))
-               (asignar_calendario 0 registro (todas_las_vacunas 0) (string-append "'"fecha_registro "'")) 
+               (asignar_calendario 0 registro (todas_las_vacunas 0) (string-append "'"fecha_registro "'"))  
            )
        
        
@@ -80,18 +80,18 @@
 ;;;aqui la logica de asignacion de calendario de vacunacion para el menor
 (define (armar_insert infante vacuna fecha)
   (string-append "insert into calendario values(" (number->string infante) "," (number->string vacuna) ",adddate(" fecha ","
-                 (number->string (meses_a_dias (car (buscar_edad vacuna)))) "),null,0)")) 
+                 (number->string (meses_a_dias (car (buscar_edad vacuna)))) "),null,false,false)")) 
 ;con la parte anteriar queda lista el dml para la insercion en la tabla
 
 
 (define (asignar_calendario trash infante vacunas fecha_inicio)
   (if (null? vacunas)
-      "calendario creado"
+      (send resultado set-value "Calendario asignado")
       (asignar_calendario (query-exec mysql (armar_insert infante (car vacunas) fecha_inicio)) infante (cdr vacunas) fecha_inicio)))    
      
 
 
- ;en caso de que un menor sea registrado tarde saber como afecta esto a lo demas
+ ;en caso de que un menor sea registrado tarde saber como afecta esto a lo demas 
 ; sabar si las dos listas son iguales
 ;queda pendiente comprobar el tamaño
 (define (son_iguales lista1 lista2)
@@ -153,13 +153,15 @@
      (append (list (car fecha)) (list (+ (car (cdr fecha)) 1)) (cdr (cdr fecha)))  
      ))
 ;funcion para calcular el numero de dias entre dos fechas
-(define (numero_dias fecha1 fecha2 suma)
-  
-  (if (difieren_en_dias fecha1 fecha2)
-      (+ suma (- (car fecha2) (car fecha1)))
-      (numero_dias (aumentar_mes fecha1) fecha2 (+ (dias_del_mes (car (cdr fecha1))) suma))
-      ))
-  
+(define (numero_dias fecha1 fecha2 suma) 
+ 
+     (if (difieren_en_dias fecha1 fecha2)
+        (+ suma (- (car fecha2) (car fecha1)))
+        (numero_dias (aumentar_mes fecha1) fecha2 (+ (dias_del_mes (car (cdr fecha1))) suma)))
+      )
+
+     
+   
 
 (define (comvertir_fecha fecha)
   (reverse (list  (string->number (substring fecha 0 4))
@@ -169,33 +171,64 @@
   
     (numero_dias (comvertir_fecha fecha1) (comvertir_fecha fecha2) 0)
   )
+(define (mayor_que fecha1 fecha2)
+  (if (null? fecha1)
+      #f
+      (if(> (car fecha1) (car fecha2))
+         #t
+         (if (= (car fecha1) (car fecha2))
+             (mayor_que (cdr fecha1) (cdr fecha2))
+             #f
+             )
+      )
+      )
+  )
+(define (diferencia_entre_fechas fecha1 fecha2)
+  (if (mayor_que (reverse fecha1) (reverse fecha2))
+      0
+      (numero_dias fecha1 fecha2 0)
+  
+  ))
+
 
 ;......................................................
 ;implementacion de aplicacion de una vacuana
-(define fecha_programada "")
+(define fecha_programada "")  
 
 (define (vacunar_infante infante fecha_programada fecha_vacunacion)
   (begin
   (query-exec mysql (string-append "update calendario set fecha_vacunacion='"fecha_vacunacion"',aplicada=true where num_regcivil="
                               infante " and fecha_programada='"fecha_programada "'"))
   (query-exec mysql (string-append "update calendario set fecha_programada=adddate(fecha_programada,"
-                            (number->string(numero_dias (comvertir_fecha fecha_programada) (comvertir_fecha fecha_vacunacion) 0))
+                            (number->string (diferencia_entre_fechas (comvertir_fecha fecha_programada) (comvertir_fecha fecha_vacunacion) ))
                             "),alerta=true where fecha_programada>'"fecha_programada"' and fecha_programada<'" 
-                            fecha_vacunacion"' and num_regcivil="infante
+                            fecha_vacunacion"' and num_regcivil="infante 
                             ))
+  (send txt_calendario set-value "Infante Vacunado-El calendario a sido modificado")
   ))
 
 (define (prioridad_vacuna infante fecha)
-  (begin
-   (set! fecha_programada (query-value mysql (string-append "select cast(fecha_programada as char) from calendario where num_regcivil=" infante
+   (if(null? (query-list mysql (string-append "select cast(fecha_programada as char) from calendario where num_regcivil=" infante
                                        " and fecha_programada<'"fecha "' and aplicada=false limit 1")))
-   (query-value mysql (string-append "select cast(fecha_programada as char) from calendario where num_regcivil=" infante
-                                       " and fecha_programada<'"fecha "' and aplicada=false limit 1"))
-   ))  
+      (begin
+            (set! fecha_programada (query-value mysql (string-append "select cast(fecha_programada as char) from calendario where num_regcivil=" infante
+                                       " and aplicada=false limit 1"))) 
+             (query-value mysql (string-append "select cast(fecha_programada as char) from calendario where num_regcivil=" infante
+                                        " and aplicada=false limit 1")))
+      (begin
+            (set! fecha_programada (query-value mysql (string-append "select cast(fecha_programada as char) from calendario where num_regcivil=" infante
+                                       " and fecha_programada<'"fecha "' and aplicada=false limit 1")))
+
+            (query-value mysql (string-append "select cast(fecha_programada as char) from calendario where num_regcivil=" infante
+                                       " and fecha_programada<'"fecha "' and aplicada=false limit 1")))
+      ))
+   
+
+   
 (define (buscar_vacunas_pendientes infante fecha)
   (query-rows mysql (string-append "select ca.vac_id, nombre, cast(fecha_programada as char) from vacuna vac inner join calendario ca"
                               " on ca.vac_id=vac.vac_id where ca.num_regcivil=" infante
-                              " and aplicada=0 and fecha_programada='" (prioridad_vacuna infante fecha)"'" )))
+                              " and aplicada=0 and fecha_programada='" (prioridad_vacuna infante fecha)"'" ))) 
 (define lista_temporal '())
 (define (mostrar_vacunas cabeza cola cadena) 
   (if (null? cola)
@@ -265,7 +298,7 @@
                          [parent ventana_vacunacion]
                          [label "vacunar"]
                          [callback (lambda (button event) (vacunar_infante (send reg_infante get-value) fecha_programada
-                                                                           (send fecha_vacuna get-value)))]))
+                                                                           (send fecha_vacuna get-value)))])) 
 (define boton_buscar(new button%
                          [parent ventana_vacunacion]
                          [label "Buscar"]
@@ -315,7 +348,7 @@
    
  
 ;Ventana registro de un menor
-(define RegMenor (new frame% [label "REGISTRO DE NUEVO INFANTE"]))
+(define RegMenor (new frame% [label "REGISTRO DE NUEVO INFANTE"] [min-height 500] [min-width 700]))
 (define numReg(new text-field% [parent RegMenor] [label "Numero registro civil"]))
 (define nombre(new text-field% [parent RegMenor] [label "Nombres"]))
 (define apellido(new text-field% [parent RegMenor] [label "Apellidos"]))
@@ -340,8 +373,9 @@
 
 (new button% [parent panel] [label "Cancelar"][callback (lambda (button event) (send panel1 show #f))])
 (new button% [parent panel] [label "Registrar"][callback (lambda (button event)
-                           ( preparar_llamado_insert (send panel show #f)) 
+                           ( preparar_llamado_insert ) 
                                               )])
+(define resultado(new text-field% [parent RegMenor] [label ""][min-height 70] [min-width 280]))
 (define (preparar_llamado_insert)
   (registrar_infante
   (string->number (send numReg get-value)) (string-append "'" (send nombre get-value) "'")
@@ -381,8 +415,8 @@
 
 (define ventanaInfoMenor (new dialog%
                               [label "Calendario Vacunacion"]
-                              [min-height 250]
-                              [min-width 800]
+                              [min-height 550]
+                              [min-width 900]
                               ))
 
 
@@ -449,6 +483,7 @@
 (send ventanaInfoMenor show #f)
 
 (send principalVentana show #t)
+
 
 
 
